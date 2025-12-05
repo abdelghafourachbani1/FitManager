@@ -1,16 +1,104 @@
 <?php
+require "conect.php";
 
-    require_once "conect.php";
+// DELETE COURSE
+if (isset($_GET['delete_course_id'])) {
+    $id = (int)$_GET['delete_course_id'];
+    $pdo->prepare("DELETE FROM courses WHERE id=?")->execute([$id]);
+    header("Location: index.php?page=courses");
+    exit;
+}
 
-    // fetch courses
-    $stmt = $pdo->query("SELECT *FROM courses ORDER BY id DESC");
-    $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// DELETE EQUIPMENT
+if (isset($_GET['delete_equip_id'])) {
+    $id = (int)$_GET['delete_equip_id'];
+    $pdo->prepare("DELETE FROM equipements WHERE id=?")->execute([$id]);
+    header("Location: index.php?page=equipments");
+    exit;
+}
 
-    //fetch equipements
-    $stmt = $pdo->query("SELECT * FROM equipements ORDER BY id DESC");
-    $equipements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// INSERT COURSE
+if (isset($_POST['add_course'])) {
+    $pdo->prepare("INSERT INTO courses(course_nom,categorie,date_cours,heure_cours,duree,max_participant) VALUES(?,?,?,?,?,?)")
+        ->execute([
+            $_POST['course_name'],
+            $_POST['course_category'],
+            $_POST['course_date'],
+            $_POST['course_time'],
+            $_POST['course_duration'],
+            $_POST['course_max']
+        ]);
+    header("Location: index.php?page=courses");
+    exit;
+}
 
+// INSERT EQUIPMENT
+if (isset($_POST['add_equipment'])) {
+    $pdo->prepare("INSERT INTO equipements(equipement_nom,equipement_type,equipement_quantite,equipement_etat) VALUES(?,?,?,?)")
+        ->execute([
+            $_POST['equip_name'],
+            $_POST['equip_type'],
+            $_POST['equip_quantity'],
+            $_POST['equip_status']
+        ]);
+    header("Location: index.php?page=equipments");
+    exit;
+}
 
+// UPDATE COURSE
+if (isset($_POST['update_course'])) {
+    $pdo->prepare("UPDATE courses SET course_nom=?,categorie=?,date_cours=?,heure_cours=?,duree=?,max_participant=? WHERE id=?")
+        ->execute([
+            $_POST['course_name'],
+            $_POST['course_category'],
+            $_POST['course_date'],
+            $_POST['course_time'],
+            $_POST['course_duration'],
+            $_POST['course_max'],
+            $_POST['course_id']
+        ]);
+    header("Location: index.php?page=courses");
+    exit;
+}
+
+// UPDATE EQUIPMENT
+if (isset($_POST['update_equipment'])) {
+    $pdo->prepare("UPDATE equipements SET equipement_nom=?,equipement_type=?,equipement_quantite=?,equipement_etat=? WHERE id=?")
+        ->execute([
+            $_POST['equip_name'],
+            $_POST['equip_type'],
+            $_POST['equip_quantity'],
+            $_POST['equip_status'],
+            $_POST['equip_id']
+        ]);
+    header("Location: index.php?page=equipments");
+    exit;
+}
+
+// FETCH DATA
+$courses = $pdo->query("SELECT * FROM courses ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+$equipements = $pdo->query("SELECT * FROM equipements ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Total Counters 
+$total_courses = $pdo->query("SELECT COUNT(*) FROM courses")->fetchColumn();
+$total_equipements = $pdo->query("SELECT COUNT(*) FROM equipements")->fetchColumn();
+
+// Group by Category (Courses) 
+$courses_types = $pdo->query("
+    SELECT categorie, COUNT(*) as total 
+    FROM courses 
+    GROUP BY categorie
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Group by Type (Equipements) 
+$equipement_types = $pdo->query("
+    SELECT equipement_type, COUNT(*) as total 
+    FROM equipements 
+    GROUP BY equipement_type
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Determine current page
+$current_page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 ?>
 
 <!DOCTYPE html>
@@ -18,10 +106,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gym Management Platform</title>
+    <title>Gym Management</title>
     <style>
-        /* Pure Native CSS - Beautiful Minimalist Gym Management Platform */
         * {
             margin: 0;
             padding: 0;
@@ -29,26 +115,20 @@
         }
 
         :root {
-            /* Colors - Dark Theme with Violet Accents */
             --bg-primary: #0a0a0a;
             --bg-secondary: #131313;
             --bg-tertiary: #1f1f1f;
             --bg-hover: #2a2a2a;
-
             --text-primary: #fafafa;
             --text-secondary: #b4b4b4;
             --text-tertiary: #7a7a7a;
-
             --accent-violet: #7c3aed;
             --accent-violet-light: #a78bfa;
             --accent-violet-dark: #6d28d9;
-
             --border-color: #2a2a2a;
             --success: #06b6d4;
             --warning: #f97316;
             --danger: #ef4444;
-
-            /* Typography */
             --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
@@ -82,10 +162,7 @@
 
         h1,
         h2,
-        h3,
-        h4,
-        h5,
-        h6 {
+        h3 {
             font-family: var(--font-display);
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -94,46 +171,24 @@
         }
 
         h1 {
-            font-size: 3.5rem;
-        }
-
-        h2 {
             font-size: 2.5rem;
         }
 
+        h2 {
+            font-size: 2rem;
+        }
+
         h3 {
-            font-size: 1.75rem;
-        }
-
-        h4 {
-            font-size: 1.25rem;
-        }
-
-        p {
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-        }
-
-        a {
-            color: var(--accent-violet);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        a:hover {
-            color: var(--accent-violet-light);
+            font-size: 1.5rem;
         }
 
         body {
             display: grid;
             grid-template-columns: 250px 1fr;
-            grid-template-rows: auto 1fr;
             min-height: 100vh;
         }
 
         nav {
-            grid-column: 1;
-            grid-row: 1 / 3;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border-color);
             padding: 2rem 0;
@@ -141,39 +196,6 @@
             top: 0;
             height: 100vh;
             overflow-y: auto;
-        }
-
-        nav.auth-nav {
-            display: none;
-        }
-
-        header {
-            grid-column: 2;
-            grid-row: 1;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        header.hidden {
-            display: none;
-        }
-
-        main {
-            grid-column: 2;
-            grid-row: 2;
-            padding: 3rem 2rem;
-            overflow-y: auto;
-            background: var(--bg-primary);
-        }
-
-        main.auth-main {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
-            padding: 0;
         }
 
         nav ul {
@@ -188,6 +210,7 @@
             transition: all 0.3s ease;
             font-size: 0.95rem;
             cursor: pointer;
+            text-decoration: none;
         }
 
         nav a:hover {
@@ -203,29 +226,18 @@
             font-weight: 600;
         }
 
-        .card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 2rem;
-            transition: all 0.3s ease;
+        main {
+            padding: 3rem 2rem;
+            overflow-y: auto;
         }
 
-        .card:hover {
-            border-color: var(--accent-violet);
-            box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
-        }
-
-        .card-header {
-            margin-bottom: 1.5rem;
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
             padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .card-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .btn {
@@ -242,37 +254,14 @@
             transition: all 0.3s ease;
             text-decoration: none;
             font-family: inherit;
-        }
-
-        .btn-primary {
             background: var(--accent-violet);
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn:hover {
             background: var(--accent-violet-dark);
             transform: translateY(-2px);
             box-shadow: 0 8px 16px rgba(124, 58, 237, 0.3);
-        }
-
-        .btn-secondary {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            background: var(--border-color);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--accent-violet);
-            border-color: var(--accent-violet);
-        }
-
-        .btn-outline:hover {
-            background: rgba(124, 58, 237, 0.1);
         }
 
         .btn-small {
@@ -280,25 +269,36 @@
             font-size: 0.85rem;
         }
 
-        .btn-danger {
+        .btn-edit {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-edit:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-del {
             background: var(--danger);
             color: white;
         }
 
-        .btn-danger:hover {
+        .btn-del:hover {
             opacity: 0.9;
+            transform: translateY(-1px);
         }
 
         .table-wrapper {
             overflow-x: auto;
             border: 1px solid var(--border-color);
             border-radius: 8px;
+            background: var(--bg-secondary);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            background: var(--bg-secondary);
         }
 
         thead {
@@ -326,134 +326,9 @@
             background: var(--bg-tertiary);
         }
 
-        .badge {
-            display: inline-block;
-            padding: 0.4rem 0.8rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: rgba(6, 182, 212, 0.15);
-            color: var(--success);
-        }
-
-        .badge-warning {
-            background: rgba(249, 115, 22, 0.15);
-            color: var(--warning);
-        }
-
-        .badge-danger {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-        }
-
-        .grid {
-            display: grid;
-            gap: 2rem;
-        }
-
-        .grid-2 {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .grid-3 {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .grid-4 {
-            grid-template-columns: repeat(4, 1fr);
-        }
-
-        .flex {
+        .action-buttons {
             display: flex;
-            gap: 1rem;
-        }
-
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .flex-center {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .flex-col {
-            flex-direction: column;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent-violet);
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
-        }
-
-        .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--accent-violet);
-        }
-
-        .stat-label {
-            color: var(--text-tertiary);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            gap: 0.5rem;
         }
 
         .modal {
@@ -498,168 +373,110 @@
             }
         }
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .modal-content h3 {
             margin-bottom: 1.5rem;
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .modal-close:hover {
             color: var(--accent-violet);
         }
 
-        .section-title {
+        .modal-content form {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 2px solid var(--border-color);
+            flex-direction: column;
+            gap: 1rem;
         }
 
-        .section-title h2 {
-            margin: 0;
-            font-size: 2rem;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
-        }
-
-        .tab-btn {
-            padding: 1rem 1.5rem;
-            background: none;
-            border: none;
-            color: var(--text-tertiary);
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
             font-weight: 600;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
             transition: all 0.3s ease;
         }
 
-        .tab-btn:hover {
-            color: var(--text-primary);
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent-violet);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
         }
 
-        .tab-btn.active {
-            color: var(--accent-violet);
-            border-bottom-color: var(--accent-violet);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Landing Page */
-        .hero {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            text-align: center;
-            gap: 2rem;
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            background: linear-gradient(135deg, var(--accent-violet), var(--accent-violet-light));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1rem;
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            max-width: 600px;
-            color: var(--text-secondary);
-        }
-
-        .hero-buttons {
+        .form-buttons {
             display: flex;
             gap: 1rem;
-            justify-content: center;
-        }
-
-        /* Auth Pages */
-        .auth-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .auth-form {
-            width: 100%;
-            max-width: 400px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 3rem;
-        }
-
-        .auth-form h2 {
-            text-align: center;
-            margin-bottom: 2rem;
-            color: var(--accent-violet);
-        }
-
-        .auth-form .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .auth-form .btn {
-            width: 100%;
             margin-top: 1rem;
         }
 
-        .auth-link {
-            text-align: center;
-            margin-top: 1.5rem;
-            color: var(--text-tertiary);
+        .form-buttons button {
+            flex: 1;
         }
 
-        .auth-link a {
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-violet);
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
             color: var(--accent-violet);
+            margin-bottom: 0.5rem;
         }
 
-        .page {
-            display: none;
+        .stat-label {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .page.active {
-            display: block;
+        .chart-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-box h2 {
+            margin-bottom: 1.5rem;
+            color: var(--accent-violet);
         }
 
         @media (max-width: 768px) {
             body {
                 grid-template-columns: 1fr;
-                grid-template-rows: auto auto auto;
             }
 
             nav {
-                grid-column: 1;
-                grid-row: 1;
                 height: auto;
                 border-right: none;
                 border-bottom: 1px solid var(--border-color);
@@ -686,583 +503,368 @@
                 border-bottom-color: var(--accent-violet);
             }
 
-            header {
-                grid-column: 1;
-                grid-row: 2;
-                flex-direction: column;
-            }
-
             main {
-                grid-column: 1;
-                grid-row: 3;
                 padding: 2rem 1rem;
             }
 
-            h1 {
-                font-size: 2rem;
-            }
-
-            h2 {
-                font-size: 1.5rem;
-            }
-
-            .grid-2,
-            .grid-3,
-            .grid-4 {
-                grid-template-columns: 1fr;
-            }
-
-            .card {
-                padding: 1.5rem;
-            }
-
-            th,
-            td {
-                padding: 0.75rem;
+            .action-buttons {
+                flex-direction: column;
             }
         }
     </style>
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav id="nav">
+    <nav>
         <ul>
-            <li><a class="nav-link" onclick="showPage('home')">Home</a></li>
-            <li><a class="nav-link" onclick="showPage('dashboard')">Dashboard</a></li>
-            <li><a class="nav-link" onclick="showPage('courses')">Courses</a></li>
-            <li><a class="nav-link" onclick="showPage('equipment')">Equipment</a></li>
-            <li><a class="nav-link" onclick="showPage('associations')">Associations</a></li>
-            <li style="margin-top: auto; padding-top: 2rem; border-top: 1px solid var(--border-color);">
-                <a class="nav-link" onclick="showPage('login')">Logout</a>
-            </li>
+            <li><a href="?page=dashboard" class="<?= $current_page == 'dashboard' ? 'active' : '' ?>">Dashboard</a></li>
+            <li><a href="?page=courses" class="<?= $current_page == 'courses' ? 'active' : '' ?>">Courses</a></li>
+            <li><a href="?page=equipments" class="<?= $current_page == 'equipments' ? 'active' : '' ?>">Equipments</a></li>
         </ul>
     </nav>
 
-    <!-- Header -->
-    <header id="header">
-        <h4 style="margin: 0;">Gym Management</h4>
-        <span style="color: var(--text-tertiary);" id="header-user">Admin</span>
-    </header>
-
-    <!-- Main Content -->
-    <main id="main">
-        <!-- Home Page -->
-        <div id="home" class="page active">
-            <div class="hero">
-                <h1>GymFlow</h1>
-                <p>Professional Gym Management Platform</p>
-                <p style="font-size: 1rem; color: var(--text-tertiary);">Manage your courses, equipment, and members
-                    with ease</p>
-                <div class="hero-buttons">
-                    <button class="btn btn-primary" onclick="showPage('dashboard')">Go to Dashboard</button>
-                    <button class="btn btn-outline" onclick="showPage('login')">Sign In</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Login Page -->
-        <div id="login" class="page">
-            <div class="auth-container">
-                <form class="auth-form" onsubmit="handleLogin(event)">
-                    <h2>Sign In</h2>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" placeholder="your@email.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Sign In</button>
-                    <div class="auth-link">
-                        Don't have an account? <a onclick="showPage('register')">Register</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Register Page -->
-        <div id="register" class="page">
-            <div class="auth-container">
-                <form class="auth-form" onsubmit="handleRegister(event)">
-                    <h2>Create Account</h2>
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" placeholder="John Doe" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" placeholder="your@email.com" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" placeholder="••••••••" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Confirm Password</label>
-                        <input type="password" placeholder="••••••••" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Create Account</button>
-                    <div class="auth-link">
-                        Already have an account? <a onclick="showPage('login')">Sign In</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Dashboard Page -->
-        <div id="dashboard" class="page">
-            <div class="section-title">
-                <h2>Dashboard</h2>
+    <main>
+        <?php if ($current_page == 'dashboard'): ?>
+            <!-- DASHBOARD PAGE -->
+            <div class="page-header">
+                <h1>Gym Dashboard</h1>
             </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number">12</div>
-                    <div class="stat-label">Active Courses</div>
+                    <div class="stat-number"><?= $total_courses ?></div>
+                    <div class="stat-label">Total Courses</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">48</div>
-                    <div class="stat-label">Total Equipment</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">156</div>
-                    <div class="stat-label">Total Members</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">92%</div>
-                    <div class="stat-label">Equipment Health</div>
+                    <div class="stat-number"><?= $total_equipements ?></div>
+                    <div class="stat-label">Total Equipments</div>
                 </div>
             </div>
 
-            <div class="grid grid-2">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Recent Courses</h3>
-                    </div>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Course Name</th>
-                                    <th>Participants</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($courses as $course): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($course['course_nom']) ?></td>
-                                        <td><?= htmlspecialchars($course['categorie']) ?></td>
-                                        <td><?= htmlspecialchars($course['date_cours']) ?></td>
-                                        <td><?= htmlspecialchars($course['heure_cours']) ?></td>
-                                        <td><?= htmlspecialchars($course['duree']) ?></td>
-                                        <td><?= htmlspecialchars($course['max_participant']) ?></td>
-                                        <td>
-                                            <a href="?edit=<?= $course['id'] ?>" class="btn btn-secondary btn-small">Edit</a>
-                                            <a href="?delete=<?= $course['id'] ?>" class="btn btn-danger btn-small" onclick="return confirm('Are you sure?')">Delete</a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Equipment Status</h3>
-                    </div>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Equipment</th>
-                                    <th>Quantity</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Dumbbells</td>
-                                    <td>120</td>
-                                    <td><span class="badge badge-success">Good</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Treadmills</td>
-                                    <td>8</td>
-                                    <td><span class="badge badge-warning">Medium</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Barbells</td>
-                                    <td>24</td>
-                                    <td><span class="badge badge-danger">To Replace</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Courses Page -->
-        <div id="courses" class="page">
-            <div class="section-title">
-                <h2>Courses Management</h2>
-                <button class="btn btn-primary" onclick="openModal('courseModal')">+ Add Course</button>
-            </div>
-
-            <div class="card">
+            <div class="chart-box">
+                <h2>Courses by Category</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>Course Name</th>
-                                <th>Category</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Duration</th>
-                                <th>Max Participants</th>
-                                <th>Actions</th>
+                                <th>Course Type</th>
+                                <th>Count</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>CrossFit Basics</td>
-                                <td>Strength</td>
-                                <td>2024-01-15</td>
-                                <td>06:00 AM</td>
-                                <td>60 mins</td>
-                                <td>25</td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('courseModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Yoga Flow</td>
-                                <td>Flexibility</td>
-                                <td>2024-01-16</td>
-                                <td>07:00 AM</td>
-                                <td>90 mins</td>
-                                <td>20</td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('courseModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Strength Training</td>
-                                <td>Strength</td>
-                                <td>2024-01-17</td>
-                                <td>05:30 AM</td>
-                                <td>75 mins</td>
-                                <td>30</td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('courseModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
+                            <?php foreach ($courses_types as $ct): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($ct['categorie']) ?></td>
+                                    <td><b><?= $ct['total'] ?></b></td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <!-- Equipment Page -->
-        <div id="equipment" class="page">
-            <div class="section-title">
-                <h2>Equipment Management</h2>
-                <button class="btn btn-primary" onclick="openModal('equipmentModal')">+ Add Equipment</button>
-            </div>
-
-            <div class="card">
+            <div class="chart-box">
+                <h2>Equipment by Type</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>Equipment Name</th>
-                                <th>Type</th>
-                                <th>Quantity</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>Equipment Type</th>
+                                <th>Count</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td>Dumbbells Set</td>
-                                <td>Strength</td>
-                                <td>120</td>
-                                <td><span class="badge badge-success">Good</span></td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('equipmentModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Treadmills</td>
-                                <td>Cardio</td>
-                                <td>8</td>
-                                <td><span class="badge badge-warning">Medium</span></td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('equipmentModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Barbells</td>
-                                <td>Strength</td>
-                                <td>24</td>
-                                <td><span class="badge badge-danger">To Replace</span></td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('equipmentModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Yoga Mats</td>
-                                <td>Flexibility</td>
-                                <td>50</td>
-                                <td><span class="badge badge-success">Good</span></td>
-                                <td>
-                                    <button class="btn btn-secondary btn-small"
-                                        onclick="openModal('equipmentModal')">Edit</button>
-                                    <button class="btn btn-danger btn-small">Delete</button>
-                                </td>
-                            </tr>
+                            <?php foreach ($equipement_types as $et): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($et['equipement_type']) ?></td>
+                                    <td><b><?= $et['total'] ?></b></td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <!-- Associations Page -->
-        <div id="associations" class="page">
-            <div class="section-title">
-                <h2>Course-Equipment Associations</h2>
+        <?php elseif ($current_page == 'courses'): ?>
+            <!-- COURSES PAGE -->
+            <div class="page-header">
+                <h1>Courses</h1>
+                <button class="btn" onclick="openAddCourse()">+ Add Course</button>
             </div>
 
-            <div class="grid grid-2">
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Filter by Course</h3>
-                    </div>
-                    <div class="form-group">
-                        <label>Select Course</label>
-                        <select>
-                            <option>-- Select a Course --</option>
-                            <option>CrossFit Basics</option>
-                            <option>Yoga Flow</option>
-                            <option>Strength Training</option>
-                        </select>
-                    </div>
-                    <div style="margin-top: 2rem;">
-                        <h4>Associated Equipment:</h4>
-                        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox" checked> Dumbbells Set
-                            </label>
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox"> Barbells
-                            </label>
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox"> Weight Plates
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Filter by Equipment</h3>
-                    </div>
-                    <div class="form-group">
-                        <label>Select Equipment</label>
-                        <select>
-                            <option>-- Select Equipment --</option>
-                            <option>Dumbbells Set</option>
-                            <option>Treadmills</option>
-                            <option>Barbells</option>
-                            <option>Yoga Mats</option>
-                        </select>
-                    </div>
-                    <div style="margin-top: 2rem;">
-                        <h4>Used in Courses:</h4>
-                        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox" checked> CrossFit Basics
-                            </label>
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox" checked> Strength Training
-                            </label>
-                            <label style="display: flex; gap: 0.5rem; cursor: pointer; margin: 0;">
-                                <input type="checkbox"> Yoga Flow
-                            </label>
-                        </div>
-                    </div>
-                </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Duration</th>
+                            <th>Max Participants</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($courses as $c): ?>
+                            <tr>
+                                <td><?= $c['id'] ?></td>
+                                <td><?= htmlspecialchars($c['course_nom']) ?></td>
+                                <td><?= htmlspecialchars($c['categorie']) ?></td>
+                                <td><?= $c['date_cours'] ?></td>
+                                <td><?= $c['heure_cours'] ?></td>
+                                <td><?= $c['duree'] ?></td>
+                                <td><?= $c['max_participant'] ?></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-small btn-edit"
+                                            onclick='openEditCourse(<?= json_encode($c) ?>)'>
+                                            Edit
+                                        </button>
+                                        <a href="?page=courses&delete_course_id=<?= $c['id'] ?>"
+                                            class="btn btn-small btn-del"
+                                            onclick="return confirm('Are you sure you want to delete this course?')">
+                                            Delete
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-        </div>
+
+        <?php elseif ($current_page == 'equipments'): ?>
+            <!-- EQUIPMENTS PAGE -->
+            <div class="page-header">
+                <h1>Equipments</h1>
+                <button class="btn" onclick="openAddEquip()">+ Add Equipment</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($equipements as $e): ?>
+                            <tr>
+                                <td><?= $e['id'] ?></td>
+                                <td><?= htmlspecialchars($e['equipement_nom']) ?></td>
+                                <td><?= htmlspecialchars($e['equipement_type']) ?></td>
+                                <td><?= $e['equipement_quantite'] ?></td>
+                                <td><?= htmlspecialchars($e['equipement_etat']) ?></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-small btn-edit"
+                                            onclick='openEditEquip(<?= json_encode($e) ?>)'>
+                                            Edit
+                                        </button>
+                                        <a href="?page=equipments&delete_equip_id=<?= $e['id'] ?>"
+                                            class="btn btn-small btn-del"
+                                            onclick="return confirm('Are you sure you want to delete this equipment?')">
+                                            Delete
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </main>
 
-    <!-- Course Modal -->
-    <div id="courseModal" class="modal">
+    <!-- ADD COURSE MODAL -->
+    <div class="modal" id="addCourseModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 style="margin: 0;">Add/Edit Course</h3>
-                <button class="modal-close" onclick="closeModal('courseModal')">&times;</button>
-            </div>
-            <form onsubmit="handleCourseSubmit(event)">
-                <div class="form-group">
+            <h3>Add Course</h3>
+            <form method="POST">
+                <div>
                     <label>Course Name</label>
-                    <input type="text" placeholder="e.g., CrossFit Basics" required>
+                    <input type="text" name="course_name" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Category</label>
-                    <select required>
-                        <option>-- Select Category --</option>
-                        <option>Strength</option>
-                        <option>Cardio</option>
-                        <option>Flexibility</option>
-                        <option>Mixed</option>
-                    </select>
+                    <input type="text" name="course_category" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Date</label>
-                    <input type="date" required>
+                    <input type="date" name="course_date" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Time</label>
-                    <input type="time" required>
+                    <input type="time" name="course_time" required>
                 </div>
-                <div class="form-group">
-                    <label>Duration (minutes)</label>
-                    <input type="number" placeholder="e.g., 60" required>
+                <div>
+                    <label>Duration</label>
+                    <input type="time" name="course_duration" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Max Participants</label>
-                    <input type="number" placeholder="e.g., 25" required>
+                    <input type="number" name="course_max" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Course</button>
+                <div class="form-buttons">
+                    <button class="btn" name="add_course">Save</button>
+                    <button class="btn btn-del" onclick="closeModals()" type="button">Cancel</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Equipment Modal -->
-    <div id="equipmentModal" class="modal">
+    <!-- EDIT COURSE MODAL -->
+    <div class="modal" id="editCourseModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 style="margin: 0;">Add/Edit Equipment</h3>
-                <button class="modal-close" onclick="closeModal('equipmentModal')">&times;</button>
-            </div>
-            <form onsubmit="handleEquipmentSubmit(event)">
-                <div class="form-group">
-                    <label>Equipment Name</label>
-                    <input type="text" placeholder="e.g., Dumbbells Set" required>
+            <h3>Edit Course</h3>
+            <form method="POST">
+                <input type="hidden" id="edit_course_id" name="course_id">
+                <div>
+                    <label>Course Name</label>
+                    <input type="text" id="edit_course_name" name="course_name" required>
                 </div>
-                <div class="form-group">
+                <div>
+                    <label>Category</label>
+                    <input type="text" id="edit_course_category" name="course_category" required>
+                </div>
+                <div>
+                    <label>Date</label>
+                    <input type="date" id="edit_course_date" name="course_date" required>
+                </div>
+                <div>
+                    <label>Time</label>
+                    <input type="time" id="edit_course_time" name="course_time" required>
+                </div>
+                <div>
+                    <label>Duration</label>
+                    <input type="time" id="edit_course_duration" name="course_duration" required>
+                </div>
+                <div>
+                    <label>Max Participants</label>
+                    <input type="number" id="edit_course_max" name="course_max" required>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-edit" type="submit" name="update_course">Update</button>
+                    <button class="btn btn-del" onclick="closeModals()" type="button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD EQUIPMENT MODAL -->
+    <div class="modal" id="addEquipModal">
+        <div class="modal-content">
+            <h3>Add Equipment</h3>
+            <form method="POST">
+                <div>
+                    <label>Name</label>
+                    <input type="text" name="equip_name" required>
+                </div>
+                <div>
                     <label>Type</label>
-                    <select required>
-                        <option>-- Select Type --</option>
-                        <option>Strength</option>
-                        <option>Cardio</option>
-                        <option>Flexibility</option>
-                        <option>Accessories</option>
-                    </select>
+                    <input type="text" name="equip_type" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Quantity</label>
-                    <input type="number" placeholder="e.g., 10" required>
+                    <input type="number" name="equip_quantity" required>
                 </div>
-                <div class="form-group">
+                <div>
                     <label>Status</label>
-                    <select required>
-                        <option>-- Select Status --</option>
-                        <option>Good</option>
-                        <option>Medium</option>
-                        <option>To Replace</option>
+                    <select name="equip_status">
+                        <option value="Good">Good</option>
+                        <option value="Medium">Medium</option>
+                        <option value="To Replace">To Replace</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Equipment</button>
+                <div class="form-buttons">
+                    <button class="btn" name="add_equipment">Save</button>
+                    <button class="btn btn-del" onclick="closeModals()" type="button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT EQUIPMENT MODAL -->
+    <div class="modal" id="editEquipModal">
+        <div class="modal-content">
+            <h3>Edit Equipment</h3>
+            <form method="POST">
+                <input type="hidden" id="edit_equip_id" name="equip_id">
+                <div>
+                    <label>Name</label>
+                    <input id="edit_equip_name" name="equip_name" required>
+                </div>
+                <div>
+                    <label>Type</label>
+                    <input id="edit_equip_type" name="equip_type" required>
+                </div>
+                <div>
+                    <label>Quantity</label>
+                    <input type="number" id="edit_equip_quantity" name="equip_quantity" required>
+                </div>
+                <div>
+                    <label>Status</label>
+                    <select id="edit_equip_status" name="equip_status">
+                        <option value="Good">Good</option>
+                        <option value="Medium">Medium</option>
+                        <option value="To Replace">To Replace</option>
+                    </select>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-edit" name="update_equipment">Update</button>
+                    <button class="btn btn-del" onclick="closeModals()" type="button">Cancel</button>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
-        function showPage(pageId) {
-            // Hide all pages
-            const pages = document.querySelectorAll('.page');
-            pages.forEach(page => page.classList.remove('active'));
-
-            // Show selected page
-            document.getElementById(pageId).classList.add('active');
-
-            // Update nav active state
-            const navLinks = document.querySelectorAll('.nav-link');
-            navLinks.forEach(link => link.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Show/hide nav and header based on page
-            const nav = document.getElementById('nav');
-            const header = document.getElementById('header');
-            const main = document.getElementById('main');
-
-            if (pageId === 'login' || pageId === 'register' || pageId === 'home') {
-                nav.style.display = 'none';
-                header.classList.add('hidden');
-                main.classList.add('auth-main');
-            } else {
-                nav.style.display = 'block';
-                header.classList.remove('hidden');
-                main.classList.remove('auth-main');
-            }
+        // COURSE MODALS 
+        function openAddCourse() {
+            document.getElementById("addCourseModal").classList.add("active");
         }
 
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
+        function openEditCourse(course) {
+            document.getElementById("edit_course_id").value = course.id;
+            document.getElementById("edit_course_name").value = course.course_nom;
+            document.getElementById("edit_course_category").value = course.categorie;
+            document.getElementById("edit_course_date").value = course.date_cours;
+            document.getElementById("edit_course_time").value = course.heure_cours;
+            document.getElementById("edit_course_duration").value = course.duree;
+            document.getElementById("edit_course_max").value = course.max_participant;
+            document.getElementById("editCourseModal").classList.add("active");
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
+        // EQUIPMENT MODALS 
+        function openAddEquip() {
+            document.getElementById("addEquipModal").classList.add("active");
         }
 
-        function handleLogin(event) {
-            event.preventDefault();
-            alert('Login submitted - integrate with your PHP backend\nPOST /api/login');
-            showPage('dashboard');
+        function openEditEquip(equip) {
+            document.getElementById("edit_equip_id").value = equip.id;
+            document.getElementById("edit_equip_name").value = equip.equipement_nom;
+            document.getElementById("edit_equip_type").value = equip.equipement_type;
+            document.getElementById("edit_equip_quantity").value = equip.equipement_quantite;
+            document.getElementById("edit_equip_status").value = equip.equipement_etat;
+            document.getElementById("editEquipModal").classList.add("active");
         }
 
-        function handleRegister(event) {
-            event.preventDefault();
-            alert('Registration submitted - integrate with your PHP backend\nPOST /api/register');
-            showPage('login');
-        }
-
-        function handleCourseSubmit(event) {
-            event.preventDefault();
-            alert('Course saved - integrate with your PHP backend\nPOST /api/courses');
-            closeModal('courseModal');
-        }
-
-        function handleEquipmentSubmit(event) {
-            event.preventDefault();
-            alert('Equipment saved - integrate with your PHP backend\nPOST /api/equipment');
-            closeModal('equipmentModal');
+        function closeModals() {
+            document.querySelectorAll(".modal").forEach(m => m.classList.remove("active"));
         }
 
         // Close modal when clicking outside
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    this.classList.remove('active');
+        document.querySelectorAll(".modal").forEach(modal => {
+            modal.addEventListener("click", function(e) {
+                if (e.target === modal) {
+                    closeModals();
                 }
             });
         });

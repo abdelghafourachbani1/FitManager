@@ -39,9 +39,10 @@ CREATE TABLE courses_equipements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     cours_id INT,
     equipment_id INT,
-    FOREIGN KEY (cours_id) REFERENCES courses(id),
-    FOREIGN KEY (equipment_id) REFERENCES equipements(id)
+    FOREIGN KEY (cours_id) REFERENCES courses(id) ON UPDATE CASCADE  ON DELETE CASCADE,
+    FOREIGN KEY (equipment_id) REFERENCES equipements(id) ON UPDATE CASCADE  ON DELETE CASCADE
 );
+
 
 INSERT INTO courses_equipements (cours_id, equipment_id)
 VALUES
